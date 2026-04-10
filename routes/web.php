@@ -6,7 +6,7 @@ Route::get('/', function () {
     return '<h1>Ini adalah Halaman Tentang Aplikasi Event Hub</h1>';
 });
 
-Route::get('/contact', function () {
+Route::get('/kontak', function () {
     return view('contact');
 });
 
