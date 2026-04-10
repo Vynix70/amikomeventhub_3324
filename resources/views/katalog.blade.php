@@ -38,7 +38,7 @@
                 Kembali ke Home
             </a>
 
-            <a href="/kontak" 
+            <a href="/contact" 
                class="bg-gray-600 text-white font-semibold py-2 rounded-lg hover:bg-gray-700 transition">
                 Hubungi Saya
             </a>
