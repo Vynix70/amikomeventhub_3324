@@ -14,7 +14,7 @@
         <p class="text-slate-500 mb-6">NIM: 24.12.3324</p>
         <p class="text-slate-500 mb-6">Kelas: SI04</p>
         <a href="/" class="inline-block bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 hover:shadow-md transition duration-300">Kembali ke Home</a>
-        <a href="/contact" class="inline-block bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-gray-700 hover:shadow-md transition duration-300 mt-4">Hubungi Saya</a>
+        <a href="/kontak" class="inline-block bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-gray-700 hover:shadow-md transition duration-300 mt-4">Hubungi Saya</a>
         <a href="/bantuan" class="inline-block bg-yellow-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-yellow-700 hover:shadow-md transition duration-300 mt-4">Bantuan</a>
         <a href="/katalog" class="inline-block bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 hover:shadow-md transition duration-300 mt-4">Lihat Katalog Event</a>
     </div>
