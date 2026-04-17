@@ -22,7 +22,7 @@ Route::get('/checkout', [App\Http\Controllers\EventController::class, 'chekout']
 //admin
 Route::group(['prefix' => 'admin', 'as' => 'admin.'], function (){
 
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/events', [AdminEventController::class, 'index'])->name('events');
     Route::get('/categories', [App\Http\Controllers\Admin\CategoriesController::class, 'index'])->name('categories');
     Route::get('/transactions', [App\Http\Controllers\Admin\TransactionController::class, 'index'])->name('transactions');
