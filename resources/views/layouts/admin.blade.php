@@ -28,7 +28,7 @@
 
         <nav class="flex-1 space-y-2">
             <p class="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-4 px-2">Main Menu</p>
-            <a href="{{url('admin/')}}"
+            <a href="{{url('/admin/dashboard')}}"
                 class="flex items-center gap-3 px-4 py-3 bg-indigo-800 text-white rounded-xl font-bold transition">
                 <svg class="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
