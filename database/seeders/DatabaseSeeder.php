@@ -36,6 +36,26 @@ class DatabaseSeeder extends Seeder
 
         ]);
 
+        $category3 = \App\Models\Category::firstOrCreate([
+            'name'=>'Workshop',
+            'slug'=>'workshop'
+
+        ]);
+
+        $category4 = \App\Models\Category::firstOrCreate([
+            'name'=>'Competition',
+            'slug'=>'competition'
+
+        ]);
+
+        $kategori5 = \App\Models\Category::firstOrCreate([
+            'name'=>'Exhibition',
+            'slug'=>'exhibition'
+
+        ]);
+
+
+
         \App\Models\Event::create([
             'category_id'=> $category2->id,
             'title'=> 'Jazz Night 2025',
@@ -69,5 +89,41 @@ class DatabaseSeeder extends Seeder
             'poster_path'  =>  'posters/event-3.png' , 
             ]); 
     
+
+         \App\Models\Event::create([ 
+            'category_id'  => $category3->id, 
+            'title'=>'Workshop - Mastering Web Development' , 
+            'description'=>'Tingkatkan keterampilan pengembangan web Anda dengan workshop intensif yang dipandu oleh para ahli industri.', 
+            'date'=>'2026-05-15 09:00:00', 
+            'location'=>'Inkubator Amikom' , 
+            'price'  =>  75000 , 
+            'stock'  =>  50 , 
+            'poster_path'  =>  'posters/event-4.png' , 
+        ]);
+        
+        \App\Models\Event::create([ 
+            'category_id'  => $category4->id, 
+            'title'=>'Coding Competition - CodeMaster Challenge' , 
+            'description'=>'Uji kemampuan coding Anda dalam kompetisi yang menantang dan menangkan hadiah menarik.', 
+            'date'=>'2026-05-20 14:00:00', 
+            'location'=>'Amikom Baru' , 
+            'price'  =>  30000 , 
+            'stock'  =>  200 , 
+            'poster_path'  =>  'posters/event-5.png' , 
+        ]);
+
+            \App\Models\Event::create([ 
+                'category_id'  => $kategori5->id, 
+                'title'=>'Exhibition - Tech Innovations Expo 2026' , 
+                'description'=>'Temukan inovasi teknologi terbaru dan solusi canggih dalam pameran yang menampilkan berbagai perusahaan teknologi terkemuka.', 
+                'date'=>'2026-05-25 10:00:00', 
+                'location'=>'Amikom Baru' , 
+                'price'  =>  10000 , 
+                'stock'  =>  500 , 
+                'poster_path'  =>  'posters/event-6.png' , 
+            ]);
+
+            
+
     }
 }
