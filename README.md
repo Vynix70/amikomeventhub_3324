@@ -11,3 +11,9 @@ Tugas 2 DB
 5. Detail event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/event-detail
 6. checkot:https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/checkout
 
+Tugas 4 DB
+Kelola Event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events
+Create: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/create
+Edit: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/7/edit
+
+
