@@ -1,8 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
- <!-- Hero Section -->
-    <section class="max-w-7xl mx-auto px-6 py-20 flex flex-col md:flex-row items-center gap-12">
+ <section class="max-w-7xl mx-auto px-6 py-20 flex flex-col md:flex-row items-center gap-12">
         <div class="flex-1 space-y-8">
             <span
                 class="inline-block px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider">#1
@@ -52,20 +51,27 @@
         </div>
     </section>
 
-    <!-- Events Grid -->
     <section id="events" class="max-w-7xl mx-auto px-6 py-20">
-        <div class="flex justify-between items-end mb-12">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
             <div>
                 <h2 class="text-3xl font-extrabold mb-2">Event Terdekat</h2>
                 <p class="text-slate-500 font-medium">Jangan sampai ketinggalan acara seru minggu ini!</p>
             </div>
-            <div class="flex gap-2">
-                <button class="p-3 border rounded-xl hover:bg-white hover:shadow-md transition">Semua Kategori</button>
+            
+            {{-- MODIFIKASI: Render List Kategori menggunakan @foreach --}}
+            <div class="flex flex-wrap gap-2">
+                <button class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-sm transition">
+                    Semua
+                </button>
+                @foreach($categories as $category)
+                    <button class="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:border-indigo-600 hover:text-indigo-600 rounded-xl text-sm font-bold transition">
+                        {{ $category->name }}
+                    </button>
+                @endforeach
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <!-- Event Card 1 -->
             <div
                 class="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden">
                 <div class="relative overflow-hidden aspect-[3/4]">
@@ -94,7 +100,6 @@
                 </div>
             </div>
 
-            <!-- Event Card 2 -->
             <div
                 class="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden">
                 <div class="relative overflow-hidden aspect-[3/4]">
@@ -123,7 +128,6 @@
                 </div>
             </div>
 
-            <!-- Event Card 3 -->
             <div
                 class="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden">
                 <div class="relative overflow-hidden aspect-[3/4]">
@@ -154,7 +158,25 @@
         </div>
     </section>
 
-    <!-- Footer -->
+    {{-- MODIFIKASI TAMBAHAN: Section Grid List Daftar Partner --}}
+    <section class="max-w-7xl mx-auto px-6 py-12 border-t border-slate-100">
+        <p class="text-center text-xs font-bold uppercase tracking-widest text-indigo-600 mb-6">Official Partners & Sponsors</p>
+        <div class="flex flex-wrap justify-center items-center gap-12 opacity-60 hover:opacity-100 transition duration-300">
+            @forelse($partners as $partner)
+                <div class="flex flex-col items-center">
+                    @if($partner->logo_url)
+                        <img src="{{ asset('storage/' . $partner->logo_url) }}" alt="Logo {{ $partner->name }}" 
+                             class="h-12 w-auto object-contain filter grayscale hover:grayscale-0 transition duration-300">
+                    @else
+                        <span class="text-sm font-bold text-slate-700">{{ $partner->name }}</span>
+                    @endif
+                </div>
+            @empty
+                <p class="text-slate-400 italic text-sm">AmikomEventHub belum memiliki partner resmi.</p>
+            @endforelse
+        </div>
+    </section>
+
     <footer class="bg-indigo-900 text-indigo-100 py-20 px-6 mt-20">
         <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
             <div class="space-y-4 col-span-2">
@@ -184,7 +206,7 @@
             </div>
         </div>
         <div class="max-w-7xl mx-auto pt-12 mt-12 border-t border-indigo-800 text-center text-indigo-400 text-sm">
-            &copy; 2024 AmikomEventHub. Built with Laravel & Tailwind CSS.
+            &copy; 2026 AmikomEventHub. Built with Laravel & Tailwind CSS.
         </div>
     </footer>
 
