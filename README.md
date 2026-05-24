@@ -2,14 +2,25 @@
 Dhio Alfiansyach Putra
 24.12.3324
 
+Tugas 2 DB
+1. Halaman Dashboard: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/dashboard
+2. Halaman Event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events
+3. Halaman Transaksi: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/transactions
+4. Beranda: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/
+5. Detail event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/event-detail
+6. checkot:https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/checkout
 
-Link Branch UTS:
-https://github.com/Vynix70/amikomeventhub_3324/tree/ujian-tengah-semester-24.12.3324 
+
+
 
 
 Tugas 4 DB
 1. Kelola Event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events
 2. Create: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/create
 3. Edit: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/7/edit
+
+Link Branch UTS:
+https://github.com/Vynix70/amikomeventhub_3324/tree/ujian-tengah-semester-24.12.3324 
+
 
 
