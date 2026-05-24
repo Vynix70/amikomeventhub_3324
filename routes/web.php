@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Admin\CategoriesController;
 use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\PartnersController; // <-- Tambahkan ini di atas
 
 // USER
 Route::get('/', [HomeController::class, 'index']);
@@ -25,9 +26,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::resource('events', AdminEventController::class);
 
-    Route::get('/categories', [CategoriesController::class, 'index'])
-        ->name('categories');
+    Route::resource('categories', CategoriesController::class)->except(['create', 'show', 'edit']);
+
+    
+
+    // Di dalam Route::prefix('admin')->name('admin.')->group(function () { ... })
+    Route::resource('partners', PartnersController::class)->except(['create', 'show', 'edit']);
 
     Route::get('/transactions', [TransactionController::class, 'index'])
         ->name('transactions');
+    
+     
 });
