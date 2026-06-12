@@ -18,14 +18,25 @@ use App\Http\Controllers\Admin\TransactionController;
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
+|
+| Di sini Anda dapat mendaftarkan semua rute web untuk aplikasi Anda.
+| Rute-rute ini dimuat oleh RouteServiceProvider dalam grup middleware "web".
+|
 */
 
 // ==================== PUBLIC / USER ROUTES ====================
-Route::get('/', [HomeController::class, 'index']);
-Route::get('/event-detail', [EventController::class, 'show']);
-Route::get('/checkout', [EventController::class, 'chekout'])->name('checkout');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Pengalihan Login Global
+// Tambahkan parameter {id} pada detail, checkout, dan store
+Route::get('/event-detail/{id}', [EventController::class, 'show'])->name('events.show');
+Route::get('/checkout/{id}', [EventController::class, 'checkout'])->name('checkout');
+Route::post('/checkout/{id}', [EventController::class, 'store'])->name('checkout.store');
+
+// Mengarahkan rute tiket agar dinamis membaca id transaksi
+// SEBELUM: Route::get('/ticket', [EventController::class, 'ticket'])->name('ticket');
+// UBAH MENJADI:
+Route::get('/ticket/{id}', [EventController::class, 'ticket'])->name('ticket');
+// Pengalihan Login Global jika diakses tanpa prefix admin
 Route::get('/login', function () {
     return redirect()->route('admin.login');
 })->name('login');
@@ -51,7 +62,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('categories', CategoriesController::class)->except(['create', 'show', 'edit']);
         Route::resource('partners', PartnersController::class)->except(['create', 'show', 'edit']);
         
-        // Transaction Routes
+        // Transaction Routes (Sudah disesuaikan dengan folder admin/transactions)
         Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
         
     });
