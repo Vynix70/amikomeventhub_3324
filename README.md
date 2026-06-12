@@ -19,6 +19,11 @@ Tugas 4 DB
 2. Create: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/create
 3. Edit: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/7/edit
 
+Tugas Praktikum 8
+Form Login: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/login
+email:admin@amikom.ac.id
+pw:password
+
 Link Branch UTS:
 https://github.com/Vynix70/amikomeventhub_3324/tree/ujian-tengah-semester-24.12.3324 
 
