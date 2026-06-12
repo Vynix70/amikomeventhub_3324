@@ -10,10 +10,6 @@ Tugas 2 DB
 5. Detail event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/event-detail
 6. checkot:https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/checkout
 
-
-
-
-
 Tugas 4 DB
 1. Kelola Event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events
 2. Create: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/events/create
@@ -23,6 +19,11 @@ Tugas Praktikum 8
 1. Form Login: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/login
 2. email:admin@amikom.ac.id
 3. pw:password
+
+Tugas Praktikum 10
+1. Cek Transaksi: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/admin/transactions
+2. Proses Detail-event: https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/event-detail/8
+3. Proses Checkout:https://amikomeventhub-3324-main-rvb95n.free.laravel.cloud/checkout/8
 
 Link Branch UTS:
 https://github.com/Vynix70/amikomeventhub_3324/tree/ujian-tengah-semester-24.12.3324 
