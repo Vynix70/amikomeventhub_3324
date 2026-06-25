@@ -85,7 +85,7 @@ class CheckoutController extends Controller
         // Mengambil daftar kategori untuk keperluan menu footer
         $categories = \App\Models\Category::all();
 
-        // PERBAIKAN DI SINI: Menambahkan parameter $order_id ke dalam query where
+        // Menambahkan parameter $order_id ke dalam query where
         $transaction = Transaction::with('event')->where('order_id', $order_id)->firstOrFail();
 
         return view('checkout.payment', compact('transaction', 'categories'));
@@ -96,7 +96,8 @@ class CheckoutController extends Controller
         // Mengambil daftar kategori untuk keperluan menu footer
         $categories = \App\Models\Category::all();
 
-        $transaction = Transaction::where('order_id', $order_id)->firstOrFail();
+        // PERBAIKAN: Menambahkan with('event') agar sistem bisa mengakses data stok tiket terkait
+        $transaction = Transaction::with('event')->where('order_id', $order_id)->firstOrFail();
 
         // Validasi status pembayaran asli dari midtrans (mencegah manipulasi URL)
         \Midtrans\Config::$serverKey = env('MIDTRANS_SERVER_KEY');
@@ -107,7 +108,17 @@ class CheckoutController extends Controller
 
             // Hanya ubah status menjadi sukses jika midtrans mengonfirmasi pembayaran lunas
             if (in_array($midtransStatus->transaction_status, ['capture', 'settlement'])) {
-                $transaction->update(['status' => 'success']);
+                
+                // PENGURANGAN STOK DI SINI:
+                // Cek agar stok hanya berkurang jika status database kita sebelumnya belum bernilai 'success'
+                if ($transaction->status !== 'success') {
+                    
+                    // Update status transaksi lokal
+                    $transaction->update(['status' => 'success']);
+                    
+                    // Kurangi stok tiket event terkait sebanyak 1
+                    $transaction->event->decrement('stock', 1);
+                }
             }
         } catch (\Exception $e) {
             // Jika error (transaksi tidak ada di Midtrans, koneksi terputus), kembalikan ke beranda
