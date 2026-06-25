@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 // USER CONTROLLERS
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\CheckoutController; // 1. Pastikan CheckoutController di-import di sini
 
 // ADMIN CONTROLLERS
 use App\Http\Controllers\Admin\AuthController;
@@ -18,28 +19,29 @@ use App\Http\Controllers\Admin\TransactionController;
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Di sini Anda dapat mendaftarkan semua rute web untuk aplikasi Anda.
-| Rute-rute ini dimuat oleh RouteServiceProvider dalam grup middleware "web".
-|
 */
 
 // ==================== PUBLIC / USER ROUTES ====================
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Tambahkan parameter {id} pada detail, checkout, dan store
+// Detail Event
 Route::get('/event-detail/{id}', [EventController::class, 'show'])->name('events.show');
-Route::get('/checkout/{id}', [EventController::class, 'checkout'])->name('checkout');
-Route::post('/checkout/{id}', [EventController::class, 'store'])->name('checkout.store');
+
+// PERBAIKAN DI SINI: Diubah dari EventController menjadi CheckoutController
+Route::get('/checkout/{event}', [CheckoutController::class, 'create'])->name('checkout.create');
+Route::post('/checkout/{event}', [CheckoutController::class, 'store'])->name('checkout.store');
 
 // Mengarahkan rute tiket agar dinamis membaca id transaksi
-// SEBELUM: Route::get('/ticket', [EventController::class, 'ticket'])->name('ticket');
-// UBAH MENJADI:
 Route::get('/ticket/{id}', [EventController::class, 'ticket'])->name('ticket');
+
 // Pengalihan Login Global jika diakses tanpa prefix admin
 Route::get('/login', function () {
     return redirect()->route('admin.login');
 })->name('login');
+
+// Rute Halaman Pembayaran & Sukses Midtrans
+Route::get('/payment/{order_id}', [CheckoutController::class, 'payment'])->name('checkout.payment');
+Route::get('/success/{order_id}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 
 // ==================== ADMIN ROUTES ====================
@@ -62,7 +64,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('categories', CategoriesController::class)->except(['create', 'show', 'edit']);
         Route::resource('partners', PartnersController::class)->except(['create', 'show', 'edit']);
         
-        // Transaction Routes (Sudah disesuaikan dengan folder admin/transactions)
+        // Transaction Routes
         Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
         
     });
