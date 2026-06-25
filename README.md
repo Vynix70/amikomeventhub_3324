@@ -30,8 +30,8 @@ https://github.com/Vynix70/amikomeventhub_3324/tree/ujian-tengah-semester-24.12.
 
 
 Link InfinityFree:
-1. https://amikomeventhub3324.gt.tc/
-2. https://amikomeventhub3324.gt.tc/admin
+1. https://amikomeventhub-3324.gt.tc/
+2. https://amikomeventhub-3324.gt.tc/admin/login
 
 
 
