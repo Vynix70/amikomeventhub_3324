@@ -96,33 +96,49 @@ class CheckoutController extends Controller
         // Mengambil daftar kategori untuk keperluan menu footer
         $categories = \App\Models\Category::all();
 
-        // PERBAIKAN: Menambahkan with('event') agar sistem bisa mengakses data stok tiket terkait
+        // Mengambil data transaksi dengan relasi data event-nya
         $transaction = Transaction::with('event')->where('order_id', $order_id)->firstOrFail();
 
-        // Validasi status pembayaran asli dari midtrans (mencegah manipulasi URL)
+        // Konfigurasi Midtrans untuk mengecek status transaksi langsung ke API
         \Midtrans\Config::$serverKey = env('MIDTRANS_SERVER_KEY');
         \Midtrans\Config::$isProduction = false;
+        \Midtrans\Config::$isSanitized = true;
+        \Midtrans\Config::$is3ds = true;
 
         try {
-            $midtransStatus = \Midtrans\Transaction::status($order_id);
-
-            // Hanya ubah status menjadi sukses jika midtrans mengonfirmasi pembayaran lunas
-            if (in_array($midtransStatus->transaction_status, ['capture', 'settlement'])) {
+            // Mengecek status pesanan secara mandiri (Bypass ke Midtrans)
+            $status = \Midtrans\Transaction::status($order_id);
+            
+            if ($status) {
+                // Mengambil nilai status transaksi secara dinamis baik berupa array maupun objek
+                $trx_status = is_array($status) ? ($status['transaction_status'] ?? '') : ($status->transaction_status ?? '');
                 
-                // PENGURANGAN STOK DI SINI:
-                // Cek agar stok hanya berkurang jika status database kita sebelumnya belum bernilai 'success'
-                if ($transaction->status !== 'success') {
+                // Jika API Midtrans mengonfirmasi bahwa transaksi telah berhasil (settlement / capture)
+                if (in_array($trx_status, ['settlement', 'capture'])) {
                     
-                    // Update status transaksi lokal
-                    $transaction->update(['status' => 'success']);
-                    
-                    // Kurangi stok tiket event terkait sebanyak 1
-                    $transaction->event->decrement('stock', 1);
+                    // Hanya lakukan update jika status di database lokal masih 'pending' (indikasi Webhook tidak masuk)
+                    if (strtolower($transaction->status) === 'pending') {
+                        $transaction->update(['status' => 'success']);
+                         
+                        // Jika tiket masih ada dan terhubung dengan data event, kurangi jumlahnya sebanyak 1
+                        if ($transaction->event && $transaction->event->stock > 0) {
+                            $transaction->event->stock = $transaction->event->stock - 1;
+                            $transaction->event->save();
+                             
+                            // Mengirimkan email E-Ticket ke pelanggan
+                            try {
+                                \Illuminate\Support\Facades\Mail::to($transaction->customer_email)
+                                    ->send(new \App\Mail\EventTicketMail($transaction));
+                            } catch (\Exception $e) {
+                                \Log::error('Gagal mengirim email E-Ticket secara manual (Bypass): ' . $e->getMessage());
+                            }
+                        }
+                    }
                 }
             }
         } catch (\Exception $e) {
-            // Jika error (transaksi tidak ada di Midtrans, koneksi terputus), kembalikan ke beranda
-            return redirect()->route('home')->with('error', 'Transaksi tidak ditemukan atau gagal diproses oleh sistem pembayaran');
+            // Jika terjadi error dari API Midtrans (transaksi tidak valid), kembalikan ke beranda
+            return redirect()->route('home')->with('error', 'Transaksi tidak ditemukan atau gagal diproses oleh sistem pembayaran.');
         }
 
         return view('checkout.success', compact('transaction', 'categories'));

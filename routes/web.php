@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Route;
 // USER CONTROLLERS
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\EventController;
-use App\Http\Controllers\CheckoutController; // 1. Pastikan CheckoutController di-import di sini
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\MidtransWebhookController; // Pastikan controller ini di-import jika dibutuhkan
 
 // ADMIN CONTROLLERS
 use App\Http\Controllers\Admin\AuthController;
@@ -27,7 +28,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 // Detail Event
 Route::get('/event-detail/{id}', [EventController::class, 'show'])->name('events.show');
 
-// PERBAIKAN DI SINI: Diubah dari EventController menjadi CheckoutController
+// Checkout & Store (Proses Lempar ke Midtrans)
 Route::get('/checkout/{event}', [CheckoutController::class, 'create'])->name('checkout.create');
 Route::post('/checkout/{event}', [CheckoutController::class, 'store'])->name('checkout.store');
 
@@ -39,9 +40,14 @@ Route::get('/login', function () {
     return redirect()->route('admin.login');
 })->name('login');
 
-// Rute Halaman Pembayaran & Sukses Midtrans
+// Rute Halaman Pembayaran & Sukses Sisi Pembeli
 Route::get('/payment/{order_id}', [CheckoutController::class, 'payment'])->name('checkout.payment');
 Route::get('/success/{order_id}', [CheckoutController::class, 'success'])->name('checkout.success');
+
+
+// ==================== MIDTRANS WEBHOOK CALLBACK ====================
+// Rute ini ditaruh di luar group admin agar bisa diakses bebas oleh server Midtrans
+Route::post('/midtrans/callback', [MidtransWebhookController::class, 'handle'])->name('midtrans.callback');
 
 
 // ==================== ADMIN ROUTES ====================
