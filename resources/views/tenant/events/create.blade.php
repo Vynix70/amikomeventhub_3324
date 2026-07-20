@@ -20,12 +20,34 @@
                             <input type="text" name="title" class="form-control" placeholder="Masukkan nama kegiatan" required>
                         </div>
 
+                        {{-- STRUKTUR BARU: TANGGAL & JAM ACARA DENGAN INPUT GROUP --}}
                         <div class="row">
+                            <!-- INPUT TANGGAL -->
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-semibold">Tanggal Pelaksanaan</label>
-                                <input type="date" name="date" class="form-control" required>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted">
+                                        <i class="fas fa-calendar-day"></i>
+                                    </span>
+                                    <input type="date" name="date" class="form-control border-start-0" required>
+                                </div>
                             </div>
+                            
+                            <!-- INPUT JAM BARU (Tanpa nambah kolom DB) -->
                             <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">Jam Mulai Acara</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0 text-muted">
+                                        <i class="fas fa-clock"></i>
+                                    </span>
+                                    <input type="time" name="time" class="form-control border-start-0" required>
+                                </div>
+                                <div class="form-text">Waktu pelaksanaan acara (WIB/Zona lokal).</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
                                 <label class="form-label fw-semibold">Kategori</label>
                                 <select name="category_id" class="form-select" required>
                                     @foreach($categories as $category)

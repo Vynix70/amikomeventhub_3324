@@ -70,10 +70,10 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             @forelse($events as $event)
-                <div class="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                <div class="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col h-100">
                     <div class="relative overflow-hidden aspect-[3/4]">
                         
-                        {{-- LOGIKA BARU: PENYESUAIAN PENCARIAN FILE GAMBAR SECARA BERATINGKAT --}}
+                        {{-- LOGIKA PENCARIAN FILE GAMBAR SECARA BERATINGKAT --}}
                         @if($event->poster_path)
                             @if(file_exists(public_path('assets/images/' . $event->poster_path)))
                                 <!-- Jika file ada di folder images milik Tenant -->
@@ -88,7 +88,7 @@
                             @endif
                         @else
                             <!-- Jika event sama sekali tidak punya poster -->
-                            <div class="bg-slate-100 text-slate-400 d-flex w-full h-full flex items-center justify-center font-medium">
+                            <div class="bg-slate-100 text-slate-400 w-full h-full flex items-center justify-center font-medium">
                                 <span>No Image Available</span>
                             </div>
                         @endif
@@ -97,19 +97,33 @@
                             {{ $event->category->name ?? 'General' }}
                         </div>
                     </div>
-                    <div class="p-6">
-                        <h3 class="text-xl font-bold mb-2 group-hover:text-indigo-600 transition line-clamp-1">
+                    <div class="p-6 flex flex-col flex-grow">
+                        <h3 class="text-xl font-bold mb-3 group-hover:text-indigo-600 transition line-clamp-1">
                             {{ $event->title }}
                         </h3>
                         
-                        <div class="flex items-center gap-2 text-slate-500 text-sm mb-4">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span>{{ \Carbon\Carbon::parse($event->date)->translatedFormat('d F Y') }}</span>
+                        <!-- DETAIL INFO EVENT (TANGGAL, JAM & LOKASI) -->
+                        <div class="space-y-2 mb-4 flex-grow">
+                            <!-- TANGGAL EVENT -->
+                            <div class="flex items-center gap-2.5 text-slate-500 text-sm">
+                                <i class="fas fa-calendar-alt text-indigo-600 w-4"></i>
+                                <span>{{ \Carbon\Carbon::parse($event->date)->translatedFormat('d F Y') }}</span>
+                            </div>
+                            
+                            <!-- JAM EVENT (DIADOPSI DARI KODE BARU) -->
+                            <div class="flex items-center gap-2.5 text-slate-500 text-sm">
+                                <i class="fas fa-clock text-amber-500 w-4"></i>
+                                <span>Pukul {{ \Carbon\Carbon::parse($event->date)->format('H:i') }} WIB</span>
+                            </div>
+                            
+                            <!-- LOKASI EVENT -->
+                            <div class="flex items-center gap-2.5 text-slate-500 text-sm">
+                                <i class="fas fa-map-marker-alt text-rose-500 w-4"></i>
+                                <span class="line-clamp-1">{{ $event->location }}</span>
+                            </div>
                         </div>
                         
-                        <div class="flex justify-between items-center pt-4 border-t">
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-100 mt-auto">
                             <span class="text-2xl font-black text-indigo-600">
                                 @if($event->price == 0)
                                     Gratis

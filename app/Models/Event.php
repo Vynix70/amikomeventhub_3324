@@ -23,6 +23,14 @@ class Event extends Model
     ];
 
     /**
+     * Casting tipe data kolom (DIADOPSI DARI KODE BARU)
+     * Otomatis mengubah string tanggal menjadi objek Carbon/Datetime
+     */
+    protected $casts = [
+        'date' => 'datetime',
+    ];
+
+    /**
      * Relasi ke model Category
      */
     public function category()
@@ -31,28 +39,34 @@ class Event extends Model
     }
 
     /**
-     * TAMBAHKAN INI: Relasi ke model Partner
+     * Relasi ke model Partner
      */
     public function partner()
     {
         return $this->belongsTo(Partner::class);
     }
 
+    /**
+     * Relasi ke model Review
+     */
     public function reviews()
-{
-    return $this->hasMany(Review::class);
-}
+    {
+        return $this->hasMany(Review::class);
+    }
 
-// Fitur tambahan: Menghitung rata-rata rating bintang untuk event ini
-public function averageRating()
-{
-    return $this->reviews()->avg('rating') ?? 0;
-}
-    
+    /**
+     * Fitur tambahan: Menghitung rata-rata rating bintang untuk event ini
+     */
+    public function averageRating()
+    {
+        return $this->reviews()->avg('rating') ?? 0;
+    }
 
-public function tenant()
-{
-    return $this->belongsTo(Tenant::class);
-}
-
+    /**
+     * Relasi ke model Tenant
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 }
