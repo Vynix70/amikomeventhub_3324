@@ -42,7 +42,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-    ],
+
+    
+        'tenant' => [
+            'driver' => 'session',
+            'provider' => 'tenants',
+        ],
+],
+    
 
     /*
     |--------------------------------------------------------------------------
@@ -71,6 +78,11 @@ return [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+
+        'tenants' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\Tenant::class,
+    ],
     ],
 
     /*

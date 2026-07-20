@@ -4,32 +4,36 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Event; 
-use App\Models\Category; // Tambah Import Model Category
-use App\Models\Partner;  // Tambah Import Model Partner
+use App\Models\Category;
+use App\Models\Partner;
 
 class HomeController extends Controller
 {
-    // SESUAIKAN: Menambahkan parameter Request agar bisa membaca query parameter di URL
     public function index(Request $request)
     {
-        // 1. Buat query dasar untuk mengambil semua event beserta relasinya
-        $query = Event::with(['category', 'partner'])->latest();
+        // 1. Query Dasar: Ambil event dari Tenant yang berstatus VERIFIED *ATAU* milik Admin sendiri (tenant_id kosong/NULL)
+        $query = Event::with(['category', 'partner', 'tenant'])
+            ->where(function ($q) {
+                $q->whereHas('tenant', function ($tenantQuery) {
+                    $tenantQuery->where('status', 'verified');
+                })
+                ->orWhereNull('tenant_id'); // Menjamin event lama/asli milik Admin tetap muncul
+            })
+            ->latest();
 
-        // TAMBAHKAN LOGIKA FILTER: Jika URL memiliki parameter 'category' dan nilainya tidak kosong
+        // 2. Fitur Pencarian / Filter Kategori (Jika parameter 'category' tersedia di URL)
         if ($request->has('category') && $request->category != '') {
             $query->where('category_id', $request->category);
         }
 
-        // Eksekusi query untuk mendapatkan hasil akhir data event
-        $events = $query->get();
+        // 3. Eksekusi query dengan sistem Paginasi (Menampilkan 9 event per halaman)
+        $events = $query->paginate(9);
 
-        // 2. Ambil semua data kategori untuk tombol filter di bagian atas
+        // 4. Ambil data master pendukung untuk komponen UI di halaman utama
         $categories = Category::all();
-
-        // 3. Ambil semua data partner untuk section sponsor di bagian bawah
         $partners = Partner::all();
 
-        // 4. Return ke view 'home' (sesuai nama di web.php) dengan membawa semua data
+        // 5. Kirim semua kumpulan data ke dalam view landing page 'home'
         return view('home', compact('events', 'categories', 'partners'));
     }
 }

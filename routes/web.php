@@ -6,7 +6,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\MidtransWebhookController; // Pastikan controller ini di-import jika dibutuhkan
+use App\Http\Controllers\MidtransWebhookController;
+use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\VoucherController; // <-- Namespace VoucherController aman ter-import
 
 // ADMIN CONTROLLERS
 use App\Http\Controllers\Admin\AuthController;
@@ -15,6 +18,12 @@ use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Admin\CategoriesController;
 use App\Http\Controllers\Admin\PartnersController;
 use App\Http\Controllers\Admin\TransactionController;
+use App\Http\Controllers\Admin\TenantApprovalController;
+
+// TENANT CONTROLLERS
+use App\Http\Controllers\Tenant\AuthController as TenantAuth;
+use App\Http\Controllers\Tenant\DashboardController as TenantDashboard;
+use App\Http\Controllers\Tenant\EventController as TenantEventController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,12 +34,29 @@ use App\Http\Controllers\Admin\TransactionController;
 // ==================== PUBLIC / USER ROUTES ====================
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+// Google Authentication Routes
+Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+
+// Logout Route untuk User Publik
+Route::post('/logout', function() {
+    \Illuminate\Support\Facades\Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    
+    return redirect()->route('home')->with('success', 'Anda telah berhasil keluar.');
+})->name('logout');
+
 // Detail Event
 Route::get('/event-detail/{id}', [EventController::class, 'show'])->name('events.show');
 
-// Checkout & Store (Proses Lempar ke Midtrans)
+
+// ==================== CHECKOUT & VOUCHER ROUTES ====================
+// Rute voucher diletakkan tepat di atas rute parameter agar string statis tidak salah terbaca sebagai ID event
+Route::post('/checkout/apply-voucher', [VoucherController::class, 'applyVoucher'])->name('checkout.apply-voucher');
 Route::get('/checkout/{event}', [CheckoutController::class, 'create'])->name('checkout.create');
 Route::post('/checkout/{event}', [CheckoutController::class, 'store'])->name('checkout.store');
+
 
 // Mengarahkan rute tiket agar dinamis membaca id transaksi
 Route::get('/ticket/{id}', [EventController::class, 'ticket'])->name('ticket');
@@ -44,10 +70,34 @@ Route::get('/login', function () {
 Route::get('/payment/{order_id}', [CheckoutController::class, 'payment'])->name('checkout.payment');
 Route::get('/success/{order_id}', [CheckoutController::class, 'success'])->name('checkout.success');
 
+// Protected User Routes (Harus Login)
+Route::middleware(['auth'])->group(function () {
+    Route::post('/event/{event}/review', [ReviewController::class, 'store'])->name('review.store');
+});
+
 
 // ==================== MIDTRANS WEBHOOK CALLBACK ====================
 // Rute ini ditaruh di luar group admin agar bisa diakses bebas oleh server Midtrans
 Route::post('/midtrans/callback', [MidtransWebhookController::class, 'handle'])->name('midtrans.callback');
+
+
+// ==================== TENANT / HIMA ROUTES ====================
+// Rute Guest Tenant (Hanya bisa diakses jika BELUM login sebagai Tenant)
+Route::middleware(['guest:tenant'])->prefix('tenant')->name('tenant.')->group(function () {
+    Route::get('/register', [TenantAuth::class, 'showRegister'])->name('register');
+    Route::post('/register', [TenantAuth::class, 'register'])->name('register.store');
+    Route::get('/login', [TenantAuth::class, 'showLogin'])->name('login');
+    Route::post('/login', [TenantAuth::class, 'login'])->name('login.store');
+});
+
+// Rute Terproteksi Tenant (Wajib login sebagai Tenant)
+Route::middleware(['auth:tenant'])->prefix('tenant')->name('tenant.')->group(function () {
+    Route::get('/dashboard', [TenantDashboard::class, 'index'])->name('dashboard');
+    Route::post('/logout', [TenantAuth::class, 'logout'])->name('logout');
+    
+    // ROUTE CRUD EVENT UNTUK HIMA:
+    Route::resource('events', TenantEventController::class);
+});
 
 
 // ==================== ADMIN ROUTES ====================
@@ -72,6 +122,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         
         // Transaction Routes
         Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        
+        // --- RUTE PENGAWASAN KELAYAKAN TENANT ---
+        // Halaman daftar kelayakan tenant
+        Route::get('/tenants', [TenantApprovalController::class, 'index'])->name('tenants.index');
+        // Aksi mengubah status kelayakan
+        Route::patch('/tenants/{id}/status', [TenantApprovalController::class, 'updateStatus'])->name('tenants.update_status');
         
     });
 });

@@ -10,6 +10,7 @@ class Event extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tenant_id', // Pastikan kolom foreign key ini ada di tabel events Anda
         'title',
         'description',
         'date',
@@ -36,4 +37,22 @@ class Event extends Model
     {
         return $this->belongsTo(Partner::class);
     }
+
+    public function reviews()
+{
+    return $this->hasMany(Review::class);
+}
+
+// Fitur tambahan: Menghitung rata-rata rating bintang untuk event ini
+public function averageRating()
+{
+    return $this->reviews()->avg('rating') ?? 0;
+}
+    
+
+public function tenant()
+{
+    return $this->belongsTo(Tenant::class);
+}
+
 }

@@ -32,6 +32,7 @@
     @endif
 
     <div class="grid grid-cols-1 gap-8">
+        {{-- Ringkasan Pesanan & Pembayaran --}}
         <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
             <h3 class="text-xl font-bold mb-6 border-b pb-4">Pesanan Anda</h3>
             <div class="flex gap-6 items-start">
@@ -41,62 +42,176 @@
                     alt="Event" class="w-24 h-24 rounded-2xl object-cover">
                 <div>
                     <h4 class="font-extrabold text-lg">{{ $event->title }}</h4>
-                    {{-- DI SINI PERBAIKANNYA: Menggunakan Carbon secara aman untuk string date --}}
                     <p class="text-slate-500">
                         {{ \Carbon\Carbon::parse($event->date)->translatedFormat('d M Y') }} • {{ $event->location }}
                     </p>
-                    <p class="text-indigo-600 font-bold mt-2">1 x Rp {{ number_format($event->price, 0, ',', '.') }}</p>
+                    <p class="text-indigo-600 font-bold mt-2">1 x {{ $event->price == 0 ? 'Gratis' : 'Rp ' . number_format($event->price, 0, ',', '.') }}</p>
                 </div>
             </div>
+            
+            {{-- LOGIKA RINCIAN BIAYA DINAMIS --}}
             <div class="mt-8 pt-6 border-t space-y-3">
                 <div class="flex justify-between text-slate-500">
                     <span>Harga Tiket</span>
-                    <span>Rp {{ number_format($event->price, 0, ',', '.') }}</span>
+                    <span>{{ $event->price == 0 ? 'Gratis' : 'Rp ' . number_format($event->price, 0, ',', '.') }}</span>
                 </div>
+                
                 <div class="flex justify-between text-slate-500">
                     <span>Biaya Layanan</span>
-                    <span>Rp 5.000</span>
+                    @if($event->price == 0)
+                        <span class="text-green-600 font-bold uppercase text-xs">Bebas Biaya</span>
+                    @else
+                        <span>Rp 5.000</span>
+                    @endif
                 </div>
+
+                {{-- Potongan Diskon (Sembunyikan bawaan menggunakan kelas Tailwind 'hidden') --}}
+                <div class="flex justify-between text-red-600 font-medium hidden" id="row_discount">
+                    <span>Potongan Diskon</span>
+                    <span id="text_discount">- Rp 0</span>
+                </div>
+                
                 <div class="flex justify-between text-2xl font-black mt-4 pt-4 border-t">
                     <span>Total Bayar</span>
-                    <span class="text-indigo-600">Rp {{ number_format($event->price + 5000, 0, ',', '.') }}</span>
+                    <span class="text-indigo-600" id="text_total_price">
+                        @if($event->price == 0)
+                            Rp 0
+                        @else
+                            Rp {{ number_format($event->price + 5000, 0, ',', '.') }}
+                        @endif
+                    </span>
                 </div>
             </div>
         </div>
 
+        {{-- Kolom Input Voucher (Hanya tampil jika Event Tidak Gratis) --}}
+        @if($event->price > 0)
         <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-            <h3 class="text-xl font-bold mb-6 italic text-indigo-600 underline underline-offset-8">📦 Data Pemesan (Tanpa Login)</h3>
+            <h3 class="text-xl font-bold mb-4 text-slate-800">Punya Kode Voucher?</h3>
+            <div class="flex gap-3">
+                <input type="text" id="voucher_input" 
+                    class="flex-1 px-5 py-4 border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition font-medium" 
+                    placeholder="Contoh: MAHASISWA50">
+                <button type="button" id="btn_apply_voucher" 
+                    class="px-6 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    Terapkan
+                </button>
+            </div>
+            <!-- Pesan Status Validasi (Sukses/Gagal) menggunakan kelas Tailwind 'hidden' -->
+            <div id="voucher_message" class="text-sm font-semibold mt-3 hidden"></div>
+        </div>
+        @endif
+
+        {{-- Form Data Pemesan --}}
+        <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+            <h3 class="text-xl font-bold mb-6 italic text-indigo-600 underline underline-offset-8">📦 Data Pemesan</h3>
             <form action="{{ route('checkout.store', $event->id) }}" method="POST" class="space-y-6">
                 @csrf
+                
+                <!-- Input Tersembunyi Sesuai Request Baru Anda -->
+                <input type="hidden" name="voucher_code" id="hidden_voucher_code">
+
+                <!-- Input Nama Pelanggan (Otomatis & Readonly) -->
                 <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Nama Lengkap</label>
-                    <input type="text" name="customer_name" placeholder="Masukkan nama sesuai identitas"
-                        class="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition font-medium"
-                        required value="{{ old('customer_name') }}">
+                    <label for="customer_name" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Nama Lengkap</label>
+                    <input type="text" name="customer_name" id="customer_name" 
+                        class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none transition font-medium text-slate-500 cursor-not-allowed"
+                        value="{{ auth()->user()->name }}" readonly required>
+                    <p class="text-[10px] text-indigo-500 mt-2 font-bold uppercase tracking-tighter">*Otomatis terisi dari akun Google Anda</p>
                 </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Input Email Pelanggan (Otomatis & Readonly) -->
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Email Aktif</label>
-                        <input type="email" name="customer_email" placeholder="contoh@gmail.com"
-                            class="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition font-medium"
-                            required value="{{ old('customer_email') }}">
+                        <label for="customer_email" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Email Aktif</label>
+                        <input type="email" name="customer_email" id="customer_email" 
+                            class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none transition font-medium text-slate-500 cursor-not-allowed"
+                            value="{{ auth()->user()->email }}" readonly required>
                         <p class="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">*E-Ticket akan dikirim ke email ini</p>
                     </div>
+                    
+                    <!-- Input Nomor Telepon (Manual) -->
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">No. WhatsApp</label>
-                        <input type="tel" name="customer_phone" placeholder="08xxxxxxx"
+                        <label for="customer_phone" class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">No. WhatsApp</label>
+                        <input type="tel" name="customer_phone" id="customer_phone" placeholder="Contoh: 08123456789"
                             class="w-full px-5 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition font-medium"
                             required value="{{ old('customer_phone') }}">
                     </div>
                 </div>
 
-                <button type="submit"
+                {{-- TOMBOL SUBMIT DINAMIS --}}
+                <button type="submit" id="btn_submit_checkout"
                     class="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xl shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all">
-                    Lanjut Pembayaran
+                    {{ $event->price == 0 ? 'Daftar Event Gratis Sekarang' : 'Lanjut Pembayaran' }}
                 </button>
                 <p class="text-center text-xs text-slate-400">Dengan menekan tombol di atas, Anda menyetujui Syarat & Ketentuan kami.</p>
             </form>
         </div>
     </div>
 </main>
+
+{{-- SCRIPT JAVASCRIPT DINAMIS --}}
+@if($event->price > 0)
+<script>
+document.getElementById('btn_apply_voucher').addEventListener('click', function() {
+    const voucherCode = document.getElementById('voucher_input').value.trim();
+    const msgElement = document.getElementById('voucher_message');
+    
+    if (!voucherCode) {
+        msgElement.className = "text-sm font-semibold mt-3 text-red-600";
+        msgElement.innerText = "Silakan ketik kode kupon terlebih dahulu!";
+        msgElement.classList.remove('hidden');
+        return;
+    }
+
+    const eventId = "{{ $event->id }}";
+
+    // Request AJAX Fetch ke URL statis
+    fetch("/checkout/apply-voucher", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({
+            code: voucherCode,
+            event_id: eventId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        msgElement.classList.remove('hidden');
+        
+        if (data.success) {
+            // Jika Voucher Valid
+            msgElement.className = "text-sm font-semibold mt-3 text-green-600";
+            msgElement.innerText = data.message;
+            
+            // ✅ Menggunakan langsung variabel voucherCode yang sudah di-trim di atas
+            document.getElementById('hidden_voucher_code').value = voucherCode;
+            
+            // Tampilkan baris potongan harga & ubah nominal harga total secara dinamis
+            document.getElementById('row_discount').classList.remove('hidden');
+            document.getElementById('text_discount').innerText = "- Rp " + new Intl.NumberFormat('id-ID').format(data.discount);
+            document.getElementById('text_total_price').innerText = "Rp " + new Intl.NumberFormat('id-ID').format(data.final_price);
+            
+            // Kunci field input & tombol voucher agar tidak dimanipulasi lagi
+            document.getElementById('voucher_input').setAttribute('disabled', 'true');
+            document.getElementById('voucher_input').classList.add('bg-slate-50', 'text-slate-400', 'cursor-not-allowed');
+            document.getElementById('btn_apply_voucher').setAttribute('disabled', 'true');
+        } else {
+            // Jika Voucher Gagal / Salah / Kedaluwarsa
+            msgElement.className = "text-sm font-semibold mt-3 text-red-600";
+            msgElement.innerText = data.message;
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        msgElement.className = "text-sm font-semibold mt-3 text-red-600";
+        msgElement.innerText = "Terjadi kesalahan sistem, silakan coba lagi.";
+        msgElement.classList.remove('hidden');
+    });
+});
+</script>
+@endif
 @endsection
