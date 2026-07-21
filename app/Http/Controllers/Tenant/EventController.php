@@ -5,19 +5,21 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Category;
+use App\Models\TicketTier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage; // Menggunakan Facade Storage (Lebih Modern & Aman)
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class EventController extends Controller
 {
     /**
-     * 1. Menampilkan daftar event milik HIMA/Tenant yang sedang login saja
+     * 1. Menampilkan daftar event milik HIMA/Tenant yang sedang login
      */
     public function index()
     {
         $tenantId = Auth::guard('tenant')->id();
-        $events = Event::where('tenant_id', $tenantId)->get();
+        $events = Event::where('tenant_id', $tenantId)->with('ticketTiers')->get();
         
         return view('tenant.events.index', compact('events'));
     }
@@ -32,50 +34,81 @@ class EventController extends Controller
     }
 
     /**
-     * 3. Menyimpan data event baru ke database & memindahkan berkas ke Storage Public
-     * (Sudah digabung dengan trik manipulasi jam pelaksanaan)
+     * 3. Menyimpan data event baru + Dynamic Pricing Tier
      */
     public function store(Request $request)
     {
-        // 1. Validasi input form (tambahkan 'time' ke dalam rule validasi & perketat poster)
+        // 1. Validasi Input Event & Array Tiers
         $request->validate([
             'title'       => 'required|string|max:255',
             'date'        => 'required|date',
-            'time'        => 'required', // Validasi input jam baru
+            'time'        => 'required',
             'category_id' => 'required|exists:categories,id',
             'location'    => 'required|string|max:255',
-            'price'       => 'required|numeric|min:0',
-            'stock'       => 'required|integer|min:1',
-            'poster_path' => 'required|image|mimes:jpeg,png,jpg|max:2048', // Diwajibkan saat membuat event baru
+            'description' => 'nullable|string',
+            'poster_path' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+
+            // Validasi Array Dynamic Pricing Tier
+            'tiers'              => 'required|array|min:1',
+            'tiers.*.name'       => 'required|string|max:255',
+            'tiers.*.price'      => 'required|numeric|min:0',
+            'tiers.*.quota'      => 'required|integer|min:1',
+            'tiers.*.start_date' => 'required|date',
+            'tiers.*.end_date'   => 'required|date|after_or_equal:tiers.*.start_date',
         ]);
 
-        // 2. TRIK GABUNGKAN TANGGAL & JAM
-        // Menggabungkan format "YYYY-MM-DD" dan "HH:MM" menjadi "YYYY-MM-DD HH:MM:00"
         $fullDateTime = $request->date . ' ' . $request->time . ':00';
 
-        // 3. Proses upload file poster ke folder storage/app/public/posters
-        $posterPath = null;
-        if ($request->hasFile('poster_path')) {
-            $posterPath = $request->file('poster_path')->store('posters', 'public');
+        DB::beginTransaction();
+        try {
+            // 2. Upload Poster
+            $posterPath = null;
+            if ($request->hasFile('poster_path')) {
+                $posterPath = $request->file('poster_path')->store('posters', 'public');
+            }
+
+            // Hitung total stok dari gabungan seluruh kuota tier
+            $totalStock = array_sum(array_column($request->tiers, 'quota'));
+            $firstTierPrice = $request->tiers[0]['price'];
+
+            // 3. Simpan Event Utama
+            $event = Event::create([
+                'tenant_id'   => Auth::guard('tenant')->id(),
+                'title'       => $request->title,
+                'description' => $request->description,
+                'date'        => $fullDateTime,
+                'category_id' => $request->category_id,
+                'location'    => $request->location,
+                'price'       => $firstTierPrice, // Harga fallback/summary tier pertama
+                'stock'       => $totalStock,      // Total stok gabungan
+                'poster_path' => $posterPath,
+            ]);
+
+            // 4. Simpan Setiap Tier Tiket ke Tabel ticket_tiers
+            foreach ($request->tiers as $tier) {
+                $event->ticketTiers()->create([
+                    'name'       => $tier['name'],
+                    'price'      => $tier['price'],
+                    'quota'      => $tier['quota'],
+                    'start_date' => $tier['start_date'],
+                    'end_date'   => $tier['end_date'],
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('tenant.events.index')->with('success', 'Event beserta skema Dynamic Pricing berhasil diterbitkan!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if (isset($posterPath) && Storage::disk('public')->exists($posterPath)) {
+                Storage::disk('public')->delete($posterPath);
+            }
+            return back()->withInput()->with('error', 'Gagal menyimpan event: ' . $e->getMessage());
         }
-
-        // 4. Simpan ke Database dengan memetakan array secara manual demi keamanan data
-        Event::create([
-            'tenant_id'   => Auth::guard('tenant')->id(),
-            'title'       => $request->title,
-            'date'        => $fullDateTime, // Sematkan string gabungan tanggal + jam utuh ke kolom date
-            'category_id' => $request->category_id,
-            'location'    => $request->location,
-            'price'       => $request->price,
-            'stock'       => $request->stock,
-            'poster_path' => $posterPath,
-        ]);
-
-        return redirect()->route('tenant.events.index')->with('success', 'Event berhasil diterbitkan beserta jam pelaksanaannya!');
     }
 
     /**
-     * 4. Menampilkan form edit dengan proteksi akses silang antar tenant
+     * 4. Menampilkan form edit dengan proteksi akses
      */
     public function edit(Event $event)
     {
@@ -83,64 +116,91 @@ class EventController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk mengelola event ini.');
         }
 
+        $event->load('ticketTiers');
         $categories = Category::all();
+        
         return view('tenant.events.edit', compact('event', 'categories'));
     }
 
     /**
-     * 5. Memperbarui data event beserta penanganan berkas poster lama dan baru 
-     * (Sudah disesuaikan dengan validasi jam dan penggabungan datetime dari data baru)
+     * 5. Memperbarui data event & Dynamic Pricing Tier
      */
     public function update(Request $request, Event $event)
     {
-        // 1. Proteksi akses silang antar tenant
         if ($event->tenant_id !== Auth::guard('tenant')->id()) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah event ini.');
         }
 
-        // 2. Validasi data (menyerap aturan ketat dan validasi 'time' dari kode baru)
         $request->validate([
             'title'       => 'required|string|max:255',
             'date'        => 'required|date',
-            'time'        => 'required', // Wajib diisi jamnya saat update
+            'time'        => 'required',
             'category_id' => 'required|exists:categories,id',
             'location'    => 'required|string|max:255',
-            'price'       => 'required|numeric|min:0',
-            'stock'       => 'required|integer|min:1',
-            'poster_path' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Nullable karena opsional saat edit
+            'description' => 'nullable|string',
+            'poster_path' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+
+            // Validasi Array Dynamic Pricing Tier
+            'tiers'              => 'required|array|min:1',
+            'tiers.*.name'       => 'required|string|max:255',
+            'tiers.*.price'      => 'required|numeric|min:0',
+            'tiers.*.quota'      => 'required|integer|min:1',
+            'tiers.*.start_date' => 'required|date',
+            'tiers.*.end_date'   => 'required|date|after_or_equal:tiers.*.start_date',
         ]);
 
-        // 3. Satukan Tanggal dan Jam baru
         $fullDateTime = $request->date . ' ' . $request->time . ':00';
 
-        // 4. Logika Update Poster (menggunakan Storage::disk untuk menghapus file lama agar lebih clean)
-        $posterPath = $event->poster_path; 
-        if ($request->hasFile('poster_path')) {
-            // Hapus file poster lama dari storage jika berkas fisiknya terdeteksi ada
-            if ($posterPath && Storage::disk('public')->exists($posterPath)) {
-                Storage::disk('public')->delete($posterPath);
+        DB::beginTransaction();
+        try {
+            // Logika Update Poster
+            $posterPath = $event->poster_path; 
+            if ($request->hasFile('poster_path')) {
+                if ($posterPath && Storage::disk('public')->exists($posterPath)) {
+                    Storage::disk('public')->delete($posterPath);
+                }
+                $posterPath = $request->file('poster_path')->store('posters', 'public');
             }
-            
-            // Simpan file baru ke folder 'posters' dengan disk 'public'
-            $posterPath = $request->file('poster_path')->store('posters', 'public');
+
+            $totalStock = array_sum(array_column($request->tiers, 'quota'));
+            $firstTierPrice = $request->tiers[0]['price'];
+
+            // Update Event Utama
+            $event->update([
+                'title'       => $request->title,
+                'description' => $request->description,
+                'date'        => $fullDateTime,
+                'category_id' => $request->category_id,
+                'location'    => $request->location,
+                'price'       => $firstTierPrice,
+                'stock'       => $totalStock,
+                'poster_path' => $posterPath,
+            ]);
+
+            // Replace Seluruh Tier Tiket (Hapus lama, simpan set baru)
+            $event->ticketTiers()->delete();
+
+            foreach ($request->tiers as $tier) {
+                $event->ticketTiers()->create([
+                    'name'       => $tier['name'],
+                    'price'      => $tier['price'],
+                    'quota'      => $tier['quota'],
+                    'start_date' => $tier['start_date'],
+                    'end_date'   => $tier['end_date'],
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('tenant.events.index')->with('success', 'Detail event & tier harga berhasil diperbarui!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Gagal memperbarui event: ' . $e->getMessage());
         }
-
-        // 5. Update data ke database secara manual/explicit demi mass-assignment safety
-        $event->update([
-            'title'       => $request->title,
-            'date'        => $fullDateTime, // Jam masuk ke kolom date tanpa ubah struktur DB
-            'category_id' => $request->category_id,
-            'location'    => $request->location,
-            'price'       => $request->price,
-            'stock'       => $request->stock,
-            'poster_path' => $posterPath,
-        ]);
-
-        return redirect()->route('tenant.events.index')->with('success', 'Detail event berhasil diperbarui beserta waktunya!');
     }
 
     /**
-     * 6. Menghapus data event dari sistem serta membersihkan file terkait di media penyimpanan
+     * 6. Menghapus data event beserta berkas dan tier tiketnya
      */
     public function destroy(Event $event)
     {
@@ -148,12 +208,21 @@ class EventController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus event ini.');
         }
 
-        // Hapus file gambar dari penyimpanan fisik sebelum record data dihapus permanen
-        if ($event->poster_path && Storage::disk('public')->exists($event->poster_path)) {
-            Storage::disk('public')->delete($event->poster_path);
-        }
+        DB::beginTransaction();
+        try {
+            if ($event->poster_path && Storage::disk('public')->exists($event->poster_path)) {
+                Storage::disk('public')->delete($event->poster_path);
+            }
 
-        $event->delete();
-        return redirect()->route('tenant.events.index')->with('success', 'Event berhasil dihapus.');
+            $event->ticketTiers()->delete();
+            $event->delete();
+
+            DB::commit();
+            return redirect()->route('tenant.events.index')->with('success', 'Event berhasil dihapus.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menghapus event: ' . $e->getMessage());
+        }
     }
 }

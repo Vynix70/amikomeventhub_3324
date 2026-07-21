@@ -5,7 +5,7 @@
     <!-- STRUKTUR UTAMA DETAIL ACARA -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
         
-        <!-- ================= SEKTOR KIRI: POSTER ACARA (TERUPDATE) ================= -->
+        <!-- ================= SEKTOR KIRI: POSTER ACARA ================= -->
         <div class="lg:col-span-1">
             <div class="sticky top-32">
                 <img src="{{ 
@@ -35,7 +35,7 @@
             </div>
         </div>
 
-        <!-- SEKTOR KANAN: DETAIL INFO ACARA -->
+        <!-- ================= SEKTOR KANAN: DETAIL INFO ACARA ================= -->
         <div class="lg:col-span-2 space-y-12">
             <div class="space-y-4">
                 <span class="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold uppercase tracking-wider">
@@ -75,91 +75,110 @@
                 </div>
             </div>
 
-            <!-- CARD STRUKTUR HARGA / PEMBELIAN TIKET -->
+            <!-- ================= CARD DINAMIS PENJUALAN TIKET (TIER) ================= -->
             @php
                 $isEventFinished = \Carbon\Carbon::now()->startOfDay()->gt(\Carbon\Carbon::parse($event->date)->startOfDay());
+                $currentTier = $event->currentTier();
             @endphp
-            
-            <div class="bg-indigo-600 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
-                <div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
+
+            <div class="p-6 md:p-8 bg-white rounded-3xl border border-slate-100 shadow-xl space-y-6">
+                @if($isEventFinished)
+                    <div class="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-center font-bold text-sm">
+                        ❌ Acara telah berlangsung pada {{ \Carbon\Carbon::parse($event->date)->translatedFormat('d M Y') }}. Penjualan tiket ditutup.
+                    </div>
+                @elseif($currentTier)
                     <div>
-                        <p class="text-indigo-200 font-bold uppercase tracking-widest text-sm mb-2">Harga Tiket</p>
-                        <h2 class="text-5xl font-black">
-                            Rp {{ number_format($event->price, 0, ',', '.') }} 
-                            <span class="text-lg font-medium text-indigo-200">/ orang</span>
-                        </h2>
-                        
-                        <p class="mt-4 text-indigo-100 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            @if($isEventFinished)
-                                <span class="font-bold uppercase text-amber-300">Event Telah Selesai</span>
-                            @elseif($event->stock > 0)
-                                Sisa stok: <span class="font-bold underline">{{ $event->stock }} Tiket lagi!</span>
-                            @else
-                                <span class="font-bold uppercase text-rose-300">Tiket Habis Terjual!</span>
-                            @endif
+                        <span class="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-full uppercase">
+                            Tier Aktif: {{ $currentTier->name }}
+                        </span>
+                        <h3 class="text-4xl font-black text-slate-900 mt-2">
+                            Rp {{ number_format($currentTier->price, 0, ',', '.') }}
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Berakhir pada: {{ $currentTier->end_date ? $currentTier->end_date->format('d M Y, H:i') : '-' }} | Sisa Kuota: {{ $currentTier->quota }}
                         </p>
                     </div>
-                    
-                    <div class="w-full md:w-auto text-center md:text-right">
-                        @if($isEventFinished)
-                            <!-- KONDISI BARU: EVENT SUDAH SELESAI -->
-                            <button disabled class="w-full md:w-auto inline-block px-8 py-5 bg-slate-500 text-slate-300 rounded-2xl font-bold text-lg cursor-not-allowed shadow-inner opacity-75">
-                                ❌ Penjualan Tiket Ditutup
-                            </button>
-                        @elseif($event->stock > 0)
-                            <!-- KONDISI: BELUM SELESAI & STOK ADA -->
-                            @auth
-                                <a href="{{ route('checkout.create', $event->id) }}"
-                                    class="inline-block px-10 py-5 bg-white text-indigo-600 rounded-2xl font-black text-xl hover:scale-105 transition-transform shadow-xl">
-                                    Pesan Sekarang
-                                </a>
-                            @else
-                                <a href="{{ route('auth.google', ['event_id' => $event->id]) }}"
-                                    class="flex items-center justify-center gap-3 px-8 py-5 bg-white text-slate-800 rounded-2xl font-black text-lg hover:scale-105 transition-transform shadow-xl">
-                                    <img src="https://developers.google.com/static/identity/images/g-logo.png" alt="Google" class="w-6 h-6">
-                                    Login Google untuk Beli
-                                </a>
-                            @endauth
+
+                    @if($currentTier->quota > 0)
+                        @auth
+                            <!-- Form Pemesanan / Checkout dengan Parameter $event -->
+                            <form action="{{ route('checkout.store', $event) }}" method="POST" class="space-y-4">
+                                @csrf
+                                <input type="hidden" name="event_id" value="{{ $event->id }}">
+                                <input type="hidden" name="ticket_tier_id" value="{{ $currentTier->id }}">
+                                
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Jumlah Tiket</label>
+                                    <input type="number" name="quantity" value="1" min="1" max="{{ min(5, $currentTier->quota) }}" class="w-full px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none">
+                                </div>
+
+                                <!-- FIELD KODE VOUCHER -->
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Kode Voucher (Opsional)</label>
+                                    <input type="text" name="voucher_code" placeholder="Masukkan kode diskon" class="w-full px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-800 uppercase focus:ring-2 focus:ring-indigo-500 outline-none placeholder:normal-case placeholder:font-normal placeholder:text-slate-400">
+                                </div>
+
+                                <button type="submit" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg rounded-2xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition">
+                                    Beli Tiket Sekarang
+                                </button>
+                            </form>
                         @else
-                            <!-- KONDISI: TIKET HABIS -->
-                            <button disabled class="inline-block px-10 py-5 bg-slate-400 text-white rounded-2xl font-black text-xl cursor-not-allowed shadow-inner">
-                                Sold Out
-                            </button>
-                        @endif
-                    </div>
-                </div>
-                
-                @if($isEventFinished)
-                    <div class="relative z-10 mt-6 pt-4 border-t border-indigo-500/50 text-indigo-100 text-xs text-center md:text-left">
-                        *Acara ini telah berlangsung pada {{ \Carbon\Carbon::parse($event->date)->translatedFormat('d M Y') }}. Anda hanya dapat memberikan atau melihat ulasan di bawah ini.
+                            <a href="{{ route('auth.google', ['event_id' => $event->id]) }}"
+                               class="flex items-center justify-center gap-3 w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-base transition shadow-md">
+                                <img src="https://developers.google.com/static/identity/images/g-logo.png" alt="Google" class="w-5 h-5">
+                                Login Google untuk Beli
+                            </a>
+                        @endauth
+                    @else
+                        <div class="p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-center font-bold text-sm">
+                            ⚠️ Kuota untuk tier {{ $currentTier->name }} telah habis terjual.
+                        </div>
+                    @endif
+                @else
+                    <div class="p-4 bg-amber-50 border border-amber-100 text-amber-800 rounded-2xl text-center text-sm font-bold">
+                        🚫 Saat ini tidak ada penjualan tiket yang aktif untuk event ini.
                     </div>
                 @endif
-                
-                <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-white opacity-10 rounded-full"></div>
-                <div class="absolute -left-10 -top-10 w-32 h-32 bg-indigo-400 opacity-20 rounded-full"></div>
+
+                <!-- Daftar Seluruh Tahapan Tier (Jadwal & Transparansi Harga) -->
+                @if($event->ticketTiers && $event->ticketTiers->count() > 0)
+                    <div class="mt-6 border-t border-slate-100 pt-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Jadwal Harga Tiket</h4>
+                        <div class="space-y-2">
+                            @foreach($event->ticketTiers as $tier)
+                                <div class="flex justify-between items-center text-xs p-3 rounded-xl transition {{ $currentTier && $currentTier->id == $tier->id ? 'bg-indigo-50 border border-indigo-200 ring-1 ring-indigo-200' : 'bg-slate-50 border border-slate-100' }}">
+                                    <div>
+                                        <p class="font-bold text-slate-800">{{ $tier->name }}</p>
+                                        <p class="text-[10px] text-slate-400">
+                                            {{ $tier->start_date ? $tier->start_date->format('d/m/Y') : 'Segera' }} - {{ $tier->end_date ? $tier->end_date->format('d/m/Y') : 'Selesai' }}
+                                        </p>
+                                    </div>
+                                    <span class="font-black text-slate-900 text-sm">Rp {{ number_format($tier->price, 0, ',', '.') }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
 
+            <!-- KEBIJAKAN TIKET -->
             <div class="space-y-4">
                 <h3 class="text-xl font-bold">Kebijakan Tiket</h3>
                 <ul class="space-y-3 text-slate-500">
                     <li class="flex items-start gap-2">
-                        <svg class="w-5 h-5 text-green-500 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5 text-green-500 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                         E-Ticket akan dikirimkan otomatis setelah pembayaran berhasil.
                     </li>
                     <li class="flex items-start gap-2">
-                        <svg class="w-5 h-5 text-green-500 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5 text-green-500 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                         Tiket dapat discan di pintu masuk (Check-in).
                     </li>
                     <li class="flex items-start gap-2 text-rose-500">
-                        <svg class="w-5 h-5 text-rose-500 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5 text-rose-500 mt-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -174,7 +193,7 @@
     <div class="mt-16 pt-12 border-t border-slate-200">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
             
-            <!-- KIRI (lg:col-span-2): DAFTAR RATINGS & REVIEWS YANG SUDAH MASUK -->
+            <!-- KIRI: DAFTAR RATINGS & REVIEWS -->
             <div class="lg:col-span-2 space-y-6">
                 <div>
                     <h3 class="text-2xl font-bold text-slate-900 mb-2">💬 Ulasan Peserta ({{ $event->reviews->count() }})</h3>
@@ -198,7 +217,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Bintang Penilaian -->
                             <div class="text-amber-500 text-sm tracking-wide">
                                 {{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}
                             </div>
@@ -213,7 +231,7 @@
                 </div>
             </div>
 
-            <!-- KANAN (lg:col-span-1): FORM INPUT REVIEW -->
+            <!-- KANAN: FORM INPUT REVIEW -->
             <div class="lg:col-span-1">
                 <div class="bg-white border border-indigo-100 rounded-[2rem] p-6 shadow-xl shadow-indigo-50/50 sticky top-32">
                     <h5 class="text-xl font-bold text-indigo-900 mb-4">Berikan Penilaian Anda</h5>
@@ -221,8 +239,8 @@
                     @auth
                         @php
                             $hasTicket = \App\Models\Transaction::where('event_id', $event->id)
-                                            ->where('customer_email', auth()->user()->email)
-                                            ->whereIn('status', ['success', 'settlement'])->exists();
+                                                                ->where('customer_email', auth()->user()->email)
+                                                                ->whereIn('status', ['success', 'settlement'])->exists();
                         @endphp
 
                         @if($isEventFinished && $hasTicket)

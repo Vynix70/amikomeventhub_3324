@@ -10,7 +10,7 @@ class Event extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tenant_id', // Pastikan kolom foreign key ini ada di tabel events Anda
+        'tenant_id',
         'title',
         'description',
         'date',
@@ -18,17 +18,46 @@ class Event extends Model
         'price',
         'stock',
         'category_id',
-        'partner_id', // Pastikan kolom foreign key ini ada di tabel events Anda
+        'partner_id',
         'poster_path',
     ];
 
     /**
-     * Casting tipe data kolom (DIADOPSI DARI KODE BARU)
+     * Casting tipe data kolom
      * Otomatis mengubah string tanggal menjadi objek Carbon/Datetime
      */
     protected $casts = [
         'date' => 'datetime',
     ];
+
+    /* ==========================================
+     | RELASI TIKET & TIER (DARI KODE BARU)
+     | ========================================== */
+
+    /**
+     * Relasi ke model TicketTier (Dynamic Pricing)
+     */
+    public function ticketTiers()
+    {
+        return $this->hasMany(TicketTier::class);
+    }
+
+    /**
+     * Helper untuk mengambil tier yang AKTIF saat ini secara otomatis
+     */
+    public function currentTier()
+    {
+        $now = now();
+        return $this->ticketTiers()
+            ->where('start_date', '<=', $now)
+            ->where('end_date', '>=', $now)
+            ->where('quota', '>', 0)
+            ->first();
+    }
+
+    /* ==========================================
+     | RELASI & HELPER (DARI KODE LAMA)
+     | ========================================== */
 
     /**
      * Relasi ke model Category
@@ -47,6 +76,14 @@ class Event extends Model
     }
 
     /**
+     * Relasi ke model Tenant
+     */
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    /**
      * Relasi ke model Review
      */
     public function reviews()
@@ -62,11 +99,8 @@ class Event extends Model
         return $this->reviews()->avg('rating') ?? 0;
     }
 
-    /**
-     * Relasi ke model Tenant
-     */
-    public function tenant()
+    public function user()
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(User::class, 'user_id'); // ganti 'user_id' jika nama kolom foreign key kamu berbeda
     }
 }

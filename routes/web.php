@@ -9,7 +9,8 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\MidtransWebhookController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\VoucherController; // <-- Namespace VoucherController aman ter-import
+use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\MyTicketController; // <-- Import MyTicketController
 
 // ADMIN CONTROLLERS
 use App\Http\Controllers\Admin\AuthController;
@@ -73,6 +74,9 @@ Route::get('/success/{order_id}', [CheckoutController::class, 'success'])->name(
 // Protected User Routes (Harus Login)
 Route::middleware(['auth'])->group(function () {
     Route::post('/event/{event}/review', [ReviewController::class, 'store'])->name('review.store');
+    
+    // Rute Riwayat Tiket Saya
+    Route::get('/my-tickets', [MyTicketController::class, 'index'])->name('my-tickets.index');
 });
 
 

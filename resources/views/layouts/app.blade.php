@@ -58,7 +58,8 @@
 
                     <!-- Dropdown Content (Muncul otomatis saat di-hover) -->
                     <div class="absolute right-0 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200 z-50">
-                        <a href="#" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">
+                        <!-- Tautan Riwayat Tiket yang sudah diperbarui -->
+                        <a href="{{ route('my-tickets.index') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">
                             Riwayat Tiket
                         </a>
                         <hr class="border-slate-100 my-1">

@@ -29,8 +29,12 @@
                     </thead>
                     <tbody>
                         @forelse($events as $event)
+                            @php
+                                // Menghitung total sisa kuota tiket dari relasi ticketTiers
+                                $totalQuota = $event->ticketTiers->sum('quota');
+                            @endphp
                             <tr>
-                                <!-- BAGIAN TD POSTER YANG SUDAH DISESUAIKAN (MULTI-SISTEM) -->
+                                <!-- BAGIAN TD POSTER (MULTI-SISTEM) -->
                                 <td>
                                     @if(str_contains($event->poster_path, 'posters/'))
                                         <!-- Menampilkan gambar sistem BARU (Format Storage: posters/namafile.jpg) -->
@@ -64,10 +68,10 @@
                                 <td>{{ \Carbon\Carbon::parse($event->date)->format('d M Y') }}</td>
                                 <td>Rp {{ number_format($event->price, 0, ',', '.') }}</td>
                                 <td>
-                                    @if($event->stock <= 0)
+                                    @if($totalQuota <= 0)
                                         <span class="badge bg-danger">Habis</span>
                                     @else
-                                        <span class="badge bg-success">{{ $event->stock }} Tiket</span>
+                                        <span class="badge bg-success">{{ $totalQuota }} Tiket</span>
                                     @endif
                                 </td>
                                 <td class="text-center">
