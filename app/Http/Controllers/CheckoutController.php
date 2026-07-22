@@ -19,7 +19,7 @@ class CheckoutController extends Controller
     /**
      * Menampilkan halaman formulir checkout.
      */
-    public function create(Event $event)
+    public function create(Request $request, Event $event)
     {
         // PROTEKSI: Jika event sudah lewat, kembalikan ke halaman detail
         if (Carbon::now()->startOfDay()->gt(Carbon::parse($event->date)->startOfDay())) {
@@ -27,14 +27,18 @@ class CheckoutController extends Controller
                 ->with('error', 'Mohon maaf, pendaftaran untuk acara ini sudah ditutup karena acara telah selesai.');
         }
 
+        // Ambil tier berdasarkan request ticket_tier_id atau fallback ke tier aktif saat ini
+        $tier = $event->ticketTiers()->find($request->ticket_tier_id) ?? $event->currentTier();
+        $quantity = $request->get('quantity', 1);
+        $voucherCode = $request->get('voucher_code');
+
         $categories = Category::all();
 
-        return view('checkout.create', compact('event', 'categories'));
+        return view('checkout.create', compact('event', 'tier', 'quantity', 'voucherCode', 'categories'));
     }
 
     /**
-     * Memproses checkout / pembuatan pesanan tiket (support via Form POST dari Detail/Checkout).
-     * Dapat dipanggil melalui route: route('checkout.store', $event)
+     * Memproses checkout / pembuatan pesanan tiket.
      */
     public function store(Request $request, $event)
     {
@@ -57,7 +61,7 @@ class CheckoutController extends Controller
             'voucher_code'   => 'nullable|string',
         ]);
 
-        // Fallback otomatis menggunakan data user yang sedang login jika tidak diisi di form
+        // Fallback data pemesan dari akun login jika input form kosong
         $customerName  = $validated['customer_name'] ?? auth()->user()->name ?? 'Guest';
         $customerEmail = $validated['customer_email'] ?? auth()->user()->email ?? null;
         $customerPhone = $validated['customer_phone'] ?? auth()->user()->phone ?? '-';
@@ -75,10 +79,14 @@ class CheckoutController extends Controller
             return back()->with('error', 'Mohon maaf, jumlah tiket melebihi sisa kuota yang tersedia.');
         }
 
-        // 6. Hitung Subtotal & Potongan Voucher
-        $subtotal = $tier->price * $validated['quantity'];
-        $discount = 0;
+        // 6. Perhitungan Harga Tiket, Biaya Layanan, & Potongan Voucher
+        $unitPrice = $tier->price ?? 0;
+        $ticketTotal = $unitPrice * $validated['quantity'];
 
+        // Biaya layanan Rp 5.000 hanya jika tiket berbayar
+        $serviceFee = $ticketTotal == 0 ? 0 : 5000;
+
+        $discount = 0;
         if (!empty($validated['voucher_code'])) {
             $voucher = Voucher::where('code', strtoupper($validated['voucher_code']))
                 ->where('quota', '>', 0)
@@ -86,21 +94,27 @@ class CheckoutController extends Controller
                 ->first();
 
             if ($voucher) {
-                $discount = $voucher->type === 'percentage'
-                    ? ($voucher->discount_value / 100) * $subtotal
-                    : $voucher->discount_value;
+                // Mendukung field 'type' & 'amount' / 'discount_value'
+                $voucherAmount = $voucher->amount ?? $voucher->discount_value ?? 0;
+
+                if ($voucher->type === 'percentage') {
+                    $discount = ($ticketTotal * $voucherAmount) / 100;
+                } else {
+                    $discount = $voucherAmount;
+                }
 
                 $voucher->decrement('quota');
             }
         }
 
-        $finalTotal = max(0, $subtotal - $discount);
+        // Grand Total Akhir: (Harga Tiket - Diskon) + Biaya Layanan
+        $grandTotal = max(0, ($ticketTotal - $discount)) + $serviceFee;
         $orderId    = 'TRX-' . time() . '-' . Str::random(5);
 
         // =========================================================================
-        // 7. BYPASS TRANSAKSI UNTUK EVENT GRATIS / DISKON 100%
+        // 7. BYPASS TRANSAKSI UNTUK EVENT GRATIS / DISKON 100% (Grand Total = 0)
         // =========================================================================
-        if ($finalTotal == 0) {
+        if ($grandTotal == 0) {
             $transaction = Transaction::create([
                 'event_id'       => $eventModel->id,
                 'ticket_tier_id' => $tier->id,
@@ -113,10 +127,8 @@ class CheckoutController extends Controller
                 'status'         => 'success', // Langsung Lunas
             ]);
 
-            // Kurangi kuota tier tiket secara langsung
+            // Kurangi kuota tiket & stok event
             $tier->decrement('quota', $validated['quantity']);
-
-            // Kurangi juga stok utama di event agar sinkron
             if ($tier->event) {
                 $tier->event->decrement('stock', $validated['quantity']);
             }
@@ -134,7 +146,7 @@ class CheckoutController extends Controller
         }
 
         // =========================================================================
-        // 8. INTEGRASI MIDTRANS (UNTUK EVENT BERBAYAR)
+        // 8. INTEGRASI MIDTRANS (UNTUK TRANSAKSI BERBAYAR)
         // =========================================================================
         $transaction = Transaction::create([
             'event_id'       => $eventModel->id,
@@ -144,7 +156,7 @@ class CheckoutController extends Controller
             'customer_email' => $customerEmail,
             'customer_phone' => $customerPhone,
             'quantity'       => $validated['quantity'],
-            'total_price'    => $finalTotal,
+            'total_price'    => $grandTotal, // Menyimpan nilai grandTotal
             'status'         => 'Pending',
         ]);
 
@@ -157,7 +169,7 @@ class CheckoutController extends Controller
         $params = [
             'transaction_details' => [
                 'order_id'     => $orderId,
-                'gross_amount' => (int) $finalTotal,
+                'gross_amount' => (int) $grandTotal, // Nominal akhir yang dibayar via Midtrans
             ],
             'customer_details' => [
                 'first_name' => $customerName,
@@ -209,7 +221,7 @@ class CheckoutController extends Controller
             ->where('order_id', $order_id)
             ->firstOrFail();
 
-        // Jika transaksi gratis/berbayar sudah berstatus success di database lokal
+        // Jika transaksi gratis/berbayar sudah berstatus success di DB lokal
         if (strtolower($transaction->status) === 'success') {
             return view('checkout.success', compact('transaction', 'categories'));
         }
@@ -230,12 +242,12 @@ class CheckoutController extends Controller
                     if (strtolower($transaction->status) === 'pending') {
                         $transaction->update(['status' => 'success']);
 
-                        // Potong kuota tier setelah konfirmasi sukses pembayaran Midtrans
+                        // Potong kuota tier setelah konfirmasi sukses
                         if ($transaction->ticketTier && $transaction->ticketTier->quota >= $transaction->quantity) {
                             $transaction->ticketTier->decrement('quota', $transaction->quantity);
                         }
 
-                        // Kurangi juga stok utama di Event agar sinkron
+                        // Sync pengurangan stok utama Event
                         if ($transaction->event && $transaction->event->stock >= $transaction->quantity) {
                             $transaction->event->decrement('stock', $transaction->quantity);
                         }

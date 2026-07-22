@@ -101,10 +101,8 @@
 
                     @if($currentTier->quota > 0)
                         @auth
-                            <!-- Form Pemesanan / Checkout dengan Parameter $event -->
-                            <form action="{{ route('checkout.store', $event) }}" method="POST" class="space-y-4">
-                                @csrf
-                                <input type="hidden" name="event_id" value="{{ $event->id }}">
+                            <!-- Form Mengarah ke Halaman Checkout (GET) -->
+                            <form action="{{ route('checkout.create', $event->id) }}" method="GET" class="space-y-4">
                                 <input type="hidden" name="ticket_tier_id" value="{{ $currentTier->id }}">
                                 
                                 <div>
@@ -112,7 +110,7 @@
                                     <input type="number" name="quantity" value="1" min="1" max="{{ min(5, $currentTier->quota) }}" class="w-full px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none">
                                 </div>
 
-                                <!-- FIELD KODE VOUCHER -->
+                                <!-- FIELD KODE VOUCHER (Diteruskan ke Checkout) -->
                                 <div>
                                     <label class="block text-xs font-bold text-slate-600 mb-1">Kode Voucher (Opsional)</label>
                                     <input type="text" name="voucher_code" placeholder="Masukkan kode diskon" class="w-full px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-800 uppercase focus:ring-2 focus:ring-indigo-500 outline-none placeholder:normal-case placeholder:font-normal placeholder:text-slate-400">
